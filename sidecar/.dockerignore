@@ -1,0 +1,8 @@
+.git
+.github
+*.md
+!THIRD_PARTY_NOTICES.md
+!SOURCE_OFFER.md
+!LICENSES/
+!LICENSES/**
+*_test.go

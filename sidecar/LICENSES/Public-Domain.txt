@@ -1,0 +1,5 @@
+Public-domain material
+
+The IANA Time Zone Database states that the data is public domain. Public-domain
+material has no license grant text to reproduce. The upstream project and
+source location are recorded in ../THIRD_PARTY_NOTICES.md.
