@@ -1,6 +1,11 @@
-# ClubFoundry Installer
+# ClubFoundry Installer Source
 
-[Русская версия](README.ru.md) | [Project overview](../README.md) | [Full installation guide](../INSTALLATION.md)
+[Русская версия](README.ru.md) | [Project overview](../README.md) | [Install the ClubFoundry application](../INSTALLATION.md)
+
+> This page is technical documentation for the public source of
+> `installer/install.sh`, not the user installation guide for the ClubFoundry
+> application. To install ClubFoundry on TrueNAS SCALE or another Linux Docker
+> host, follow the [application installation guide](../INSTALLATION.md).
 
 This directory contains the public source of the ClubFoundry installer. It
 preflights the host, acquires integrity-checked application images, selects
@@ -9,7 +14,7 @@ main application with the optional updater sidecar.
 
 `installer/install.sh` is the canonical public installer source.
 
-## Basic use
+## Running the installer
 
 Download the script before running it so it can be inspected:
 
