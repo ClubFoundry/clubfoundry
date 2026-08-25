@@ -1,12 +1,20 @@
-# ClubFoundry Updater Sidecar
+# ClubFoundry Sidecar
 
 [Русская версия](README.ru.md) | [Project overview](../README.md)
 
-The updater is an optional companion container for standalone ClubFoundry
-installations. It performs verified main-application updates, stepped upgrades,
-rollback, self-update, recovery, and diagnostic collection. TrueNAS Apps catalog
-installations do not run this container because the catalog owns the image
-lifecycle.
+The sidecar is a companion container for standard Docker Compose installations
+of ClubFoundry. In addition to verified main-application updates and stepped
+upgrades, it provides rollback, self-update, crash recovery, crash-loop
+protection, and diagnostic collection.
+
+The online installer deploys the sidecar automatically. The ready-made offline
+bundle in GitHub Releases already contains both the main-application and sidecar
+images and installs them together in the standard Docker Compose mode. The
+sidecar does not need to be downloaded or installed separately.
+
+ClubFoundry is not currently published in the TrueNAS Apps catalog. The code
+already provides a mode for a future catalog installation; in that configuration
+the sidecar does not run because the catalog owns the image lifecycle.
 
 - Image: `ghcr.io/clubfoundry/updater`
 - Runtime: Linux container, amd64 and arm64
@@ -63,8 +71,8 @@ ClubFoundry ownership rule used by the installer.
 BuildKit cache is daemon-wide rather than repository-scoped. When enabled, the
 scheduled cleanup uses `docker buildx prune`; operators sharing the daemon with
 other build workloads can disable it with `auto_prune_buildcache_opt_out`.
-TrueNAS Apps catalog installations do not run the sidecar and therefore do not
-grant it Docker socket access.
+The mode reserved for a future TrueNAS Apps catalog installation does not run
+the sidecar and therefore does not grant it Docker socket access.
 
 ## Artifact trust boundary
 
@@ -96,7 +104,7 @@ sidecar/
 |-- internal/backup/         SQLite database, WAL, and SHM backup/restore
 |-- internal/bootstrap/      legacy-install reconciliation
 |-- internal/cloud/          update control-plane and mirror clients
-|-- internal/config/         persisted updater settings
+|-- internal/config/         persisted sidecar settings
 |-- internal/dockerops/      constrained Docker and Compose operations
 |-- internal/footprint/      image and data-volume accounting
 |-- internal/handlers/       authenticated HTTP surface

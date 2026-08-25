@@ -10,7 +10,7 @@
 This directory contains the public source of the ClubFoundry installer. It
 preflights the host, acquires integrity-checked application images, selects
 persistent storage, writes the Docker Compose configuration, and starts the
-main application with the optional updater sidecar.
+main application with the ClubFoundry sidecar.
 
 `installer/install.sh` is the canonical public installer source.
 
@@ -40,12 +40,12 @@ as ordinary public command-line arguments.
 
 ## Deployment modes
 
-The recommended mode is the application plus the `clubfoundry-updater`
-sidecar managed by Docker Compose. The sidecar provides verified updates,
-rollback, recovery, and crash-loop protection.
+The recommended mode is the application plus the `clubfoundry-updater` sidecar
+managed by Docker Compose. The sidecar provides verified updates, rollback,
+recovery, crash-loop protection, and diagnostic collection.
 
 A single-container fallback is selected when Compose is unavailable or can be
-forced with `--mode=a`. That mode has no updater sidecar.
+forced with `--mode=a`. That mode has no sidecar.
 
 The web UI defaults to port 3000 and falls back to another free port if needed.
 Override it with `--port=N`.
@@ -65,7 +65,10 @@ On another Linux Docker host, always pass a persistent absolute path such as
 
 ## Offline GitHub Release bundle
 
-The self-contained GitHub Release bundle uses the same installer:
+The self-contained GitHub Release bundle already contains the application and
+sidecar images and uses the same installer. In the standard Docker Compose mode,
+the installer deploys both containers, so the sidecar does not need to be
+downloaded or installed separately:
 
 ```bash
 tar -xzf clubfoundry-VERSION-offline.tar.gz
