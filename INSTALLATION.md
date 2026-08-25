@@ -24,9 +24,16 @@ paths using GitHub release files.
 - TrueNAS SCALE 24.10 or newer with Docker/Apps enabled, or another Linux host
   with a running Docker daemon;
 - root or `sudo` access;
-- `bash`, `curl`, `jq`, `tar`, and `sha256sum`;
 - persistent storage. On a non-TrueNAS host, pass an explicit
   `--app-dir=/absolute/path/clubfoundry`.
+
+No additional tools need to be installed on a supported TrueNAS SCALE version:
+everything required for the normal `System > Shell` installation is already
+available in the system.
+
+Only installations on another Linux host need to ensure that `bash`, `curl`,
+`jq`, and `sha256sum` are available. Manually extracting the offline GitHub
+Release bundle additionally requires `tar`.
 
 The server running ClubFoundry must be able to reach the TrueNAS management API
 and the iSCSI network it will manage.

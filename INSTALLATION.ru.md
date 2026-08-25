@@ -24,9 +24,16 @@ curl -fsSL https://raw.githubusercontent.com/ClubFoundry/clubfoundry/main/instal
 - TrueNAS SCALE 24.10 или новее с включённой службой Docker/Apps либо другой
   Linux-сервер с запущенным Docker;
 - права `root` или доступ к `sudo`;
-- `bash`, `curl`, `jq`, `tar` и `sha256sum`;
 - постоянное хранилище. На сервере без TrueNAS явно укажите
   `--app-dir=/абсолютный/путь/clubfoundry`.
+
+На поддерживаемой версии TrueNAS SCALE отдельно устанавливать дополнительные
+утилиты не требуется: всё необходимое для обычной установки через
+`System > Shell` уже есть в системе.
+
+Только для установки на другом Linux-сервере убедитесь, что доступны `bash`,
+`curl`, `jq` и `sha256sum`. Для ручной распаковки офлайн-комплекта GitHub Release
+дополнительно требуется `tar`.
 
 Сервер с ClubFoundry должен иметь доступ к API управления TrueNAS и к сети
 iSCSI, которой будет управлять.
