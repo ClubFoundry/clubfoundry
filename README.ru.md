@@ -33,13 +33,15 @@ ZFS-клоны при этом не дублируют мастер-диск ц�
 
 ## Установка
 
-Самый простой вариант - подключиться к TrueNAS по SSH и запустить сетевой
-установщик одной командой:
+Самый простой вариант - открыть веб-интерфейс TrueNAS, перейти в
+`System > Shell`, вставить команду и нажать Enter:
 
 ```bash
-ssh ADMIN@TRUENAS_IP
 curl -fsSL https://raw.githubusercontent.com/ClubFoundry/clubfoundry/main/installer/install.sh | sudo bash
 ```
+
+Администраторы, которые уже работают с TrueNAS по SSH, могут выполнить там ту
+же команду.
 
 Если нужна пошаговая подготовка TrueNAS и пояснения к каждому действию,
 используйте [простую инструкцию на сайте](https://clubfoundry.net/install).

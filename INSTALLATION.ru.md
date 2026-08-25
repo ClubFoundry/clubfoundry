@@ -2,6 +2,23 @@
 
 [English version](INSTALLATION.md) | [Описание проекта](README.ru.md)
 
+Самый простой способ установки на TrueNAS SCALE:
+
+1. Откройте веб-интерфейс TrueNAS.
+2. Перейдите в `System > Shell`.
+3. Вставьте команду ниже и нажмите Enter.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ClubFoundry/clubfoundry/main/installer/install.sh | sudo bash
+```
+
+Если нужна пошаговая подготовка TrueNAS и пояснения к каждому действию,
+используйте [простую инструкцию на сайте](https://clubfoundry.net/install).
+Опытные администраторы могут выполнить ту же команду через SSH.
+
+Остальная часть этого документа описывает требования и варианты ручной
+установки из файлов GitHub.
+
 ## Требования
 
 - TrueNAS SCALE 24.10 или новее с включённой службой Docker/Apps либо другой

@@ -31,13 +31,14 @@ computer do not affect the master disk or any other computer.
 
 ## Install
 
-The simplest option is to connect to TrueNAS over SSH and run the online
-installer with one command:
+The simplest option is to open the TrueNAS web interface, go to
+`System > Shell`, paste the command, and press Enter:
 
 ```bash
-ssh ADMIN@TRUENAS_IP
 curl -fsSL https://raw.githubusercontent.com/ClubFoundry/clubfoundry/main/installer/install.sh | sudo bash
 ```
+
+Administrators who already use SSH can run the same command there instead.
 
 For step-by-step TrueNAS preparation and an explanation of each action, use the
 [simple website installation guide](https://clubfoundry.net/install).
