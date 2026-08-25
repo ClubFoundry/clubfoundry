@@ -134,3 +134,26 @@ func TestMockImagesShape(t *testing.T) {
 		t.Errorf("tag ordering wrong: %v", []string{imgs[0].Tag, imgs[4].Tag})
 	}
 }
+
+func TestBuildRepoReportCountsImageIDAliasesOnce(t *testing.T) {
+	images := []dockerops.ImageInfo{
+		{Repository: "clubfoundry", Tag: "1.4.11", ID: "sha256:current", CreatedAt: "2026-08-19 21:19:55 +0000 UTC", SizeBytes: 283_000_000},
+		{Repository: "clubfoundry", Tag: "current", ID: "sha256:current", CreatedAt: "2026-08-19 21:19:55 +0000 UTC", SizeBytes: 283_000_000},
+		{Repository: "clubfoundry", Tag: "1.4.9", ID: "sha256:previous", CreatedAt: "2026-08-16 21:32:46 +0000 UTC", SizeBytes: 283_000_000},
+		{Repository: "clubfoundry", Tag: "previous", ID: "sha256:previous", CreatedAt: "2026-08-16 21:32:46 +0000 UTC", SizeBytes: 283_000_000},
+	}
+
+	report := buildRepoReport(images)
+	if report.TotalBytes != 566_000_000 {
+		t.Fatalf("total bytes = %d, want 566000000", report.TotalBytes)
+	}
+	if len(report.ImagesByTag) != 2 {
+		t.Fatalf("unique images = %d, want 2", len(report.ImagesByTag))
+	}
+	if got := report.ImagesByTag[0].Tags; len(got) != 2 || got[0] != "1.4.11" || got[1] != "current" {
+		t.Fatalf("current image tags = %v, want [1.4.11 current]", got)
+	}
+	if got := report.ImagesByTag[1].Tags; len(got) != 2 || got[0] != "1.4.9" || got[1] != "previous" {
+		t.Fatalf("previous image tags = %v, want [1.4.9 previous]", got)
+	}
+}

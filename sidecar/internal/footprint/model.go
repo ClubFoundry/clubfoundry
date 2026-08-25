@@ -18,18 +18,20 @@ type Report struct {
 	Errors                []string              `json:"errors,omitempty"`
 }
 
-// RepoReport contains newest-first image tags for one repository.
+// RepoReport contains newest-first unique images for one repository.
+// ImagesByTag keeps its original wire name for API compatibility.
 type RepoReport struct {
 	TotalBytes  int64     `json:"total_bytes"`
 	ImagesByTag []TagInfo `json:"images_by_tag"`
 }
 
-// TagInfo is one Docker image tag in a repository.
+// TagInfo is one Docker image and all repository tags pointing to it.
 type TagInfo struct {
-	Tag          string `json:"tag"`
-	ID           string `json:"id"`
-	SizeBytes    int64  `json:"size_bytes"`
-	CreatedAtRaw string `json:"created_at_raw"`
+	Tag          string   `json:"tag"`
+	Tags         []string `json:"tags,omitempty"`
+	ID           string   `json:"id"`
+	SizeBytes    int64    `json:"size_bytes"`
+	CreatedAtRaw string   `json:"created_at_raw"`
 }
 
 // DiskStat reports data-volume filesystem usage in bytes.

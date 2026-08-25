@@ -1,5 +1,7 @@
 # Sidecar release evidence
 
+[Русская версия](RELEASE_EVIDENCE.ru.md)
+
 A `sidecar-v*` tag is the only workflow event that publishes the updater image.
 Branch and pull-request runs remain build-only checks.
 

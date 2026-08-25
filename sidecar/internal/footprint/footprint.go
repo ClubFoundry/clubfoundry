@@ -8,6 +8,7 @@ package footprint
 import (
 	"context"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/clubfoundry/updater/internal/dockerops"
@@ -37,22 +38,9 @@ func Collect(ctx context.Context, dock dockerops.Config, repos []string) Report 
 		// chronologically correct.
 		sort.Slice(imgs, func(i, j int) bool { return imgs[i].CreatedAt > imgs[j].CreatedAt })
 
-		tags := make([]TagInfo, 0, len(imgs))
-		var repoTotal int64
-		for _, img := range imgs {
-			tags = append(tags, TagInfo{
-				Tag:          img.Tag,
-				ID:           img.ID,
-				SizeBytes:    img.SizeBytes,
-				CreatedAtRaw: img.CreatedAt,
-			})
-			repoTotal += img.SizeBytes
-		}
-		rep.Repos[repo] = RepoReport{
-			TotalBytes:  repoTotal,
-			ImagesByTag: tags,
-		}
-		cfTotal += repoTotal
+		repoReport := buildRepoReport(imgs)
+		rep.Repos[repo] = repoReport
+		cfTotal += repoReport.TotalBytes
 	}
 	rep.CFImagesTotalBytes = cfTotal
 
@@ -80,4 +68,55 @@ func Collect(ctx context.Context, dock dockerops.Config, repos []string) Report 
 	rep.DataVolume = statDataVolume(DataDirInside)
 
 	return rep
+}
+
+func buildRepoReport(imgs []dockerops.ImageInfo) RepoReport {
+	images := make([]TagInfo, 0, len(imgs))
+	byID := make(map[string]int, len(imgs))
+
+	for index, img := range imgs {
+		key := img.ID
+		if key == "" {
+			// Do not collapse malformed CLI rows that lack an image ID.
+			key = "\x00missing-id-" + strconv.Itoa(index)
+		}
+
+		if existingIndex, ok := byID[key]; ok {
+			existing := &images[existingIndex]
+			if !containsString(existing.Tags, img.Tag) {
+				existing.Tags = append(existing.Tags, img.Tag)
+				sort.Strings(existing.Tags)
+				existing.Tag = existing.Tags[0]
+			}
+			if img.SizeBytes > existing.SizeBytes {
+				existing.SizeBytes = img.SizeBytes
+			}
+			continue
+		}
+
+		tags := []string{img.Tag}
+		images = append(images, TagInfo{
+			Tag:          img.Tag,
+			Tags:         tags,
+			ID:           img.ID,
+			SizeBytes:    img.SizeBytes,
+			CreatedAtRaw: img.CreatedAt,
+		})
+		byID[key] = len(images) - 1
+	}
+
+	var total int64
+	for _, image := range images {
+		total += image.SizeBytes
+	}
+	return RepoReport{TotalBytes: total, ImagesByTag: images}
+}
+
+func containsString(values []string, candidate string) bool {
+	for _, value := range values {
+		if value == candidate {
+			return true
+		}
+	}
+	return false
 }

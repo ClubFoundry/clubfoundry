@@ -25,6 +25,7 @@ Options:
   --offline=DIR               Install from an air-gapped bundle.
   --app-dir=DIR               Store configuration and data under DIR.
   --port=PORT                 Set the web UI port.
+  --usage-mode=MODE           Set commercial or noncommercial use for this instance.
   --link-token=TOKEN          Link the installation to an account.
   --update                    Refresh an existing installation.
   --clean-install             Delete existing ClubFoundry data and reinstall.
@@ -87,6 +88,37 @@ pick_fastest_mirror() {
   fi
   echo "$legacy"
 }
+resolve_persistent_app_dir() {
+  command -v findmnt >/dev/null 2>&1 || return 1
+  local mounts apps_source apps_pool pool_root candidates
+  mounts=$(findmnt -rn -t zfs -o SOURCE,TARGET 2>/dev/null || true)
+  [ -n "$mounts" ] || return 1
+
+  # Prefer the data pool already selected for TrueNAS Apps.
+  apps_source=$(printf '%s\n' "$mounts" | awk '$2 == "/mnt/.ix-apps" { print $1; exit }')
+  if [ -n "$apps_source" ]; then
+    apps_pool="${apps_source%%/*}"
+    pool_root=$(printf '%s\n' "$mounts" | awk -v pool="$apps_pool" '$1 == pool { print $2; exit }')
+    if [ -n "$pool_root" ] && [ -d "$pool_root" ] && [ -w "$pool_root" ]; then
+      printf '%s/clubfoundry\n' "${pool_root%/}"
+      return 0
+    fi
+  fi
+
+  # Without an Apps pool, auto-select only when there is exactly one mounted
+  # data-pool root. Multiple pools require an explicit operator choice.
+  candidates=$(printf '%s\n' "$mounts" | awk '
+    index($1, "/") == 0 && $1 != "boot-pool" && $2 ~ /^\/mnt\/[^/]+$/ { print $2 }
+  ')
+  if [ "$(printf '%s\n' "$candidates" | sed '/^$/d' | wc -l)" -eq 1 ]; then
+    pool_root=$(printf '%s\n' "$candidates" | sed '/^$/d')
+    if [ -d "$pool_root" ] && [ -w "$pool_root" ]; then
+      printf '%s/clubfoundry\n' "${pool_root%/}"
+      return 0
+    fi
+  fi
+  return 1
+}
 
 # Command-line defaults and argument validation.
 CONTAINER_NAME="clubfoundry"
@@ -98,6 +130,7 @@ DATA_DIR=""
 PORT=3000
 PORT_FALLBACKS="3080 3400 8723 8910 9444"
 CLI_PORT=""       # set by --port=
+CLI_USAGE_MODE="" # set by --usage-mode=commercial|noncommercial
 CLI_LINK_TOKEN="" # set by --link-token= (Account Portal one-liner)
 DRY_RUN=0         # set by --dry-run: resolve and print without host changes
 UPDATER_PORT=3001
@@ -116,6 +149,7 @@ for arg in "$@"; do
     --offline=*) OFFLINE_DIR="${arg#--offline=}" ;;
     --app-dir=*) APP_DIR="${arg#--app-dir=}" ;;
     --port=*) CLI_PORT="${arg#--port=}" ;;
+    --usage-mode=*) CLI_USAGE_MODE="${arg#--usage-mode=}" ;;
     --link-token=*) CLI_LINK_TOKEN="${arg#--link-token=}" ;;
     --update) UPDATE_MODE=1 ;;
     --clean-install) CLEAN_INSTALL=1 ;;
@@ -144,6 +178,10 @@ if [ -n "$CLI_PORT" ]; then
     error "--port must be an integer between 1 and 65535."
   fi
 fi
+case "$CLI_USAGE_MODE" in
+  ""|commercial|noncommercial) ;;
+  *) error "Invalid --usage-mode: $CLI_USAGE_MODE (must be commercial or noncommercial)." ;;
+esac
 
 log "ClubFoundry Installer"
 echo ""
@@ -258,13 +296,8 @@ run_compose() {
   fi
 }
 if [ -z "$APP_DIR" ]; then
-  if { [ -d /opt/clubfoundry ] && [ -w /opt/clubfoundry ]; } \
-    || { [ ! -e /opt/clubfoundry ] && [ -w /opt ]; }; then
-    APP_DIR="/opt/clubfoundry"
-  else
-    APP_DIR="/var/lib/clubfoundry"
-    log "/opt is read-only (TrueNAS SCALE 25.10+) — using $APP_DIR"
-  fi
+  APP_DIR=$(resolve_persistent_app_dir) || error "Cannot select a persistent TrueNAS data pool automatically. Re-run with --app-dir=/mnt/<pool>/clubfoundry"
+  log "Using persistent TrueNAS data-pool path $APP_DIR"
 fi
 DATA_DIR="${APP_DIR}/data"
 if [ "$DRY_RUN" -eq 0 ]; then
@@ -324,6 +357,58 @@ docker inspect "$CONTAINER_NAME" >/dev/null 2>&1 && HAS_CONTAINER=1
 docker inspect "$UPDATER_NAME" >/dev/null 2>&1 && HAS_CONTAINER=1
 [ -d "$DATA_DIR" ] && HAS_DATA=1
 [ -f "$DATA_DIR/clm.db" ] && HAS_DB=1
+
+# Per-instance licensing declaration. Existing installations keep an explicit
+# value. A legacy install with no value writes `auto`; the updated backend then
+# classifies it once from its managed non-admin PC count and persists the result.
+USAGE_MODE=""
+if [ "$HAS_DB" -eq 1 ] && [ "$CLEAN_INSTALL" -eq 0 ]; then
+  USAGE_MODE=$(grep -E '^CLM_USAGE_MODE=' "${DATA_DIR}/.env" 2>/dev/null | head -1 | cut -d= -f2 | tr -d '[:space:]' || true)
+  case "$USAGE_MODE" in
+    commercial|noncommercial) ;;
+    *) USAGE_MODE="auto" ;;
+  esac
+  case "$CLI_USAGE_MODE" in
+    "") ;;
+    commercial|noncommercial)
+      if [ "$CLI_USAGE_MODE" != "$USAGE_MODE" ]; then
+        warn "Changing instance usage mode from ${USAGE_MODE} to ${CLI_USAGE_MODE}."
+        USAGE_MODE="$CLI_USAGE_MODE"
+      fi
+      ;;
+  esac
+  if [ "$USAGE_MODE" = "auto" ]; then
+    ok "Instance usage mode: auto-select on first updated start"
+  else
+    ok "Instance usage mode: ${USAGE_MODE}"
+  fi
+else
+  case "$CLI_USAGE_MODE" in
+    commercial|noncommercial) USAGE_MODE="$CLI_USAGE_MODE" ;;
+    "") ;;
+  esac
+  if [ -z "$USAGE_MODE" ] && [ -t 1 ] && [ -c /dev/tty ] && ( : </dev/tty ) 2>/dev/null; then
+    echo ""
+    echo "How will this ClubFoundry instance be used?"
+    echo "  1) Personal / non-commercial use"
+    echo "     Free released features, up to 30 managed PCs. No direct or indirect"
+    echo "     business, employer, customer, computer-club, or internet-cafe use."
+    echo "  2) Commercial / professional use"
+    echo "     First 10 managed PCs are free; current pricing applies beyond that."
+    while [ -z "$USAGE_MODE" ]; do
+      read -r -p "Choose 1 or 2: " usage_choice </dev/tty
+      case "$usage_choice" in
+        1) USAGE_MODE="noncommercial" ;;
+        2) USAGE_MODE="commercial" ;;
+        *) warn "Enter 1 for non-commercial or 2 for commercial use." ;;
+      esac
+    done
+  elif [ -z "$USAGE_MODE" ]; then
+    USAGE_MODE="commercial"
+    warn "Non-interactive install without --usage-mode; defaulting to commercial use."
+  fi
+  ok "Instance usage mode: ${USAGE_MODE}"
+fi
 stop_and_remove_ours() {
   # Try compose-down first — it knows the project name + drops orphans.
   if [ -f "${APP_DIR}/docker-compose.yml" ] && [ "$HAS_COMPOSE" -eq 1 ]; then
@@ -422,6 +507,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   echo "  app dir:       ${APP_DIR}"
   echo "  data dir:      ${DATA_DIR}"
   echo "  env file:      ${ENV_FILE}"
+  echo "  usage mode:    ${USAGE_MODE}"
   echo "  link token:    $([ -n "$LINK_TOKEN" ] && echo "would be written" || echo "none")"
   echo "  truenas creds: $([ -n "$CLM_TRUENAS_API_KEY" ] && echo "pre-seeded" || echo "deferred to in-app gate")"
   ok "Dry run complete - re-run without --dry-run to install."
@@ -589,6 +675,7 @@ ROLLBACK_DIR=""
 PREVIOUS_ENV_PRESENT=0
 PREVIOUS_LINK_TOKEN_PRESENT=0
 PREVIOUS_COMPOSE_PRESENT=0
+PREVIOUS_USAGE_MODE_REQUEST_PRESENT=0
 cleanup_installer_rollback() {
   if [ -n "$ROLLBACK_DIR" ]; then
     rm -rf -- "$ROLLBACK_DIR"
@@ -605,6 +692,11 @@ restore_previous_config() {
     cp -a "${ROLLBACK_DIR}/.link-token" "${DATA_DIR}/.link-token"
   else
     rm -f "${DATA_DIR}/.link-token"
+  fi
+  if [ "$PREVIOUS_USAGE_MODE_REQUEST_PRESENT" -eq 1 ]; then
+    cp -a "${ROLLBACK_DIR}/.usage-mode-request" "${DATA_DIR}/.usage-mode-request"
+  else
+    rm -f "${DATA_DIR}/.usage-mode-request"
   fi
   if [ "$PREVIOUS_COMPOSE_PRESENT" -eq 1 ]; then
     cp -a "${ROLLBACK_DIR}/docker-compose.yml" "${APP_DIR}/docker-compose.yml"
@@ -632,6 +724,10 @@ prepare_installer_rollback() {
   if [ -f "${DATA_DIR}/.link-token" ]; then
     cp -a "${DATA_DIR}/.link-token" "${ROLLBACK_DIR}/.link-token"
     PREVIOUS_LINK_TOKEN_PRESENT=1
+  fi
+  if [ -f "${DATA_DIR}/.usage-mode-request" ]; then
+    cp -a "${DATA_DIR}/.usage-mode-request" "${ROLLBACK_DIR}/.usage-mode-request"
+    PREVIOUS_USAGE_MODE_REQUEST_PRESENT=1
   fi
   if [ -f "${APP_DIR}/docker-compose.yml" ]; then
     cp -a "${APP_DIR}/docker-compose.yml" "${ROLLBACK_DIR}/docker-compose.yml"
@@ -661,8 +757,17 @@ CLM_TRUENAS_API_KEY=${CLM_TRUENAS_API_KEY}
 CLM_PORT=${PORT}
 CLM_DATA_DIR=/app/data
 CLM_CLOUD_URL=${CLOUD_URL}
+CLM_USAGE_MODE=${USAGE_MODE}
 EOF
 ok "Configuration saved to ${ENV_FILE}"
+if [ "$HAS_DB" -eq 1 ] && [ "$CLEAN_INSTALL" -eq 0 ]; then
+  case "$CLI_USAGE_MODE" in
+    commercial|noncommercial)
+      printf '%s\n' "$CLI_USAGE_MODE" >"${DATA_DIR}/.usage-mode-request"
+      chmod 600 "${DATA_DIR}/.usage-mode-request" 2>/dev/null || true
+      ;;
+  esac
+fi
 if [ -n "$LINK_TOKEN" ]; then
   printf '%s\n' "$LINK_TOKEN" >"${DATA_DIR}/.link-token"
   ok "Account-link token written to ${DATA_DIR}/.link-token"

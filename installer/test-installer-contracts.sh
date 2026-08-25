@@ -249,10 +249,18 @@ ss() {
   fi
 }
 
-export -f command curl docker docker-compose jq mktemp sleep ss
+findmnt() {
+  if [ -n "${TEST_FINDMNT_OUTPUT:-}" ]; then
+    printf '%s\n' "$TEST_FINDMNT_OUTPUT"
+    return 0
+  fi
+  /usr/bin/findmnt "$@"
+}
+
+export -f command curl docker docker-compose findmnt jq mktemp sleep ss
 export DOCKER_CALLS FIXTURE_IMAGE_PAYLOAD FIXTURE_IMAGE_SHA FIXTURE_UPDATER_PAYLOAD FIXTURE_UPDATER_SHA
 
-for shim_name in command curl docker docker-compose jq mktemp sleep ss; do
+for shim_name in command curl docker docker-compose findmnt jq mktemp sleep ss; do
   if [ "$(bash -c "type -t $shim_name")" != "function" ]; then
     echo "$shim_name test shim was not inherited by a child Bash process" >&2
     exit 1
@@ -280,6 +288,7 @@ expect_rejected "unknown option" --unknown-option
 expect_rejected "zero port" --port=0
 expect_rejected "out-of-range port" --port=65536
 expect_rejected "non-numeric port" --port=not-a-port
+expect_rejected "invalid usage mode" --usage-mode=invalid
 expect_rejected "relative app directory" --app-dir=relative/path
 expect_rejected "filesystem-root app directory" --app-dir=/
 
@@ -311,8 +320,24 @@ printf '%s\n' "$compose_output" | grep -Fq "mode:          a"
 test ! -e "$compose_target"
 
 fresh_target="$TEST_ROOT/fresh"
-bash "$INSTALLER" --dry-run --mode=b --port=41037 --app-dir="$fresh_target" >/dev/null
+fresh_output=$(bash "$INSTALLER" --dry-run --mode=b --port=41037 --usage-mode=noncommercial --app-dir="$fresh_target")
+printf '%s\n' "$fresh_output" | grep -Fq "usage mode:    noncommercial"
 test ! -e "$fresh_target"
+
+apps_pool_root="$TEST_ROOT/apps-pool"
+mkdir -p "$apps_pool_root"
+default_output=$(TEST_FINDMNT_OUTPUT=$(printf 'fixturepool %s\nfixturepool/ix-apps /mnt/.ix-apps' "$apps_pool_root") \
+  bash "$INSTALLER" --dry-run --mode=b --port=41037)
+printf '%s\n' "$default_output" | grep -Fq "app dir:       $apps_pool_root/clubfoundry"
+test ! -e "$apps_pool_root/clubfoundry"
+
+ambiguous_output="$TEST_ROOT/ambiguous.output"
+if TEST_FINDMNT_OUTPUT=$(printf 'poola /mnt/poola\npoolb /mnt/poolb') \
+  bash "$INSTALLER" --dry-run --mode=b --port=41037 >"$ambiguous_output" 2>&1; then
+  echo "ambiguous data-pool default was accepted" >&2
+  exit 1
+fi
+grep -Fq "Re-run with --app-dir=/mnt/<pool>/clubfoundry" "$ambiguous_output"
 
 legacy_target="$TEST_ROOT/legacy"
 mkdir -p "$legacy_target/data"
@@ -320,6 +345,23 @@ printf 'LEGACY_SETTING=preserve-me\n' >"$legacy_target/data/.env"
 bash "$INSTALLER" --dry-run --mode=b --app-dir="$legacy_target" >/dev/null
 test "$(cat "$legacy_target/data/.env")" = "LEGACY_SETTING=preserve-me"
 test "$(find "$legacy_target" -type f | wc -l)" -eq 1
+
+declared_target="$TEST_ROOT/declared"
+mkdir -p "$declared_target/data"
+printf '%s\n' 'CLM_USAGE_MODE=noncommercial' > "$declared_target/data/.env"
+printf '%s\n' 'database fixture' > "$declared_target/data/clm.db"
+declared_preserved=$(bash "$INSTALLER" --dry-run --mode=b --app-dir="$declared_target")
+printf '%s\n' "$declared_preserved" | grep -Fq "usage mode:    noncommercial"
+declared_changed=$(bash "$INSTALLER" --dry-run --mode=b --usage-mode=commercial --app-dir="$declared_target")
+printf '%s\n' "$declared_changed" | grep -Fq "usage mode:    commercial"
+grep -Fqx 'CLM_USAGE_MODE=noncommercial' "$declared_target/data/.env"
+
+legacy_auto_target="$TEST_ROOT/legacy-auto"
+mkdir -p "$legacy_auto_target/data"
+printf '%s\n' 'LEGACY_SETTING=preserve-me' > "$legacy_auto_target/data/.env"
+printf '%s\n' 'database fixture' > "$legacy_auto_target/data/clm.db"
+legacy_auto_output=$(bash "$INSTALLER" --dry-run --mode=b --app-dir="$legacy_auto_target")
+printf '%s\n' "$legacy_auto_output" | grep -Fq "usage mode:    auto"
 
 occupied_target="$TEST_ROOT/occupied"
 if TEST_OCCUPIED_PORT=41037 bash "$INSTALLER" --dry-run --mode=b --port=41037 --app-dir="$occupied_target" >/dev/null 2>&1; then
@@ -755,6 +797,7 @@ expect_rejected "replacement run failure over an existing installation" \
   --mode=a \
   --port=41047 \
   --app-dir="$failed_deploy_target" \
+  --usage-mode=noncommercial \
   --link-token=cflink_12345678901234567890
 unset TEST_EXISTING_INSTALL TEST_REPLACEMENT_RUN_FAILURE TEST_INSTALLER_TMP_ROOT
 grep -Eq '^run -d .*ghcr.io/clubfoundry/clubfoundry:latest$' "$DOCKER_CALLS"
@@ -771,6 +814,7 @@ test "$(sha256sum "$failed_deploy_target/data/clm.db" | awk '{print $1}')" = "$f
 test "$(sha256sum "$failed_deploy_target/data/.link-token" | awk '{print $1}')" = "$failed_deploy_link_sha"
 test "$(stat -c '%a:%u:%g' "$failed_deploy_target/data/.env")" = "$failed_deploy_env_meta"
 test "$(stat -c '%a:%u:%g' "$failed_deploy_target/data/.link-token")" = "$failed_deploy_link_meta"
+test ! -e "$failed_deploy_target/data/.usage-mode-request"
 if compgen -G "$TEST_ROOT/installer-tmp.*" >/dev/null; then
   echo "failed replacement rollback left a temporary backup behind" >&2
   exit 1
@@ -890,6 +934,7 @@ grep -Eq '^compose up -d$' "$DOCKER_CALLS"
 grep -Fq 'image: ghcr.io/clubfoundry/clubfoundry:latest' "$mode_b_target/docker-compose.yml"
 grep -Fq 'image: ghcr.io/clubfoundry/updater:latest' "$mode_b_target/docker-compose.yml"
 grep -Fqx 'CLM_PORT=41046' "$mode_b_target/data/.env"
+grep -Fqx 'CLM_USAGE_MODE=commercial' "$mode_b_target/data/.env"
 
 : >"$DOCKER_CALLS"
 mode_b_rerun_target="$TEST_ROOT/mode-b-successful-rerun"

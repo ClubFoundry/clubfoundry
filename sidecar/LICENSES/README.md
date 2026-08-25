@@ -1,5 +1,7 @@
 # Sidecar license texts
 
+[Русская версия](README.ru.md)
+
 This directory contains the standard license texts referenced by the exact
 runtime inventories in `../runtime-packages.lock` and `../runtime-tools.lock`,
 plus BSD-3-Clause for the Go standard library linked into the updater binary.

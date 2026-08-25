@@ -1,5 +1,7 @@
 # ClubFoundry Updater Sidecar
 
+[Русская версия](README.ru.md) | [Project overview](../README.md)
+
 The updater is an optional companion container for standalone ClubFoundry
 installations. It performs verified main-application updates, stepped upgrades,
 rollback, self-update, recovery, and diagnostic collection. TrueNAS Apps catalog
