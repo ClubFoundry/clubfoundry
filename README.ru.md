@@ -95,6 +95,10 @@ Steam.
 
 ## Поддержка и безопасность
 
-Поддержка: <https://t.me/ClubFoundryBot> или `support@clubfoundry.net`.
-Не публикуйте в GitHub Issues ключи API, токены привязки аккаунта, загрузочные
-токены Windows Agent, файлы `.env`, базы данных и диагностические архивы.
+- Telegram-бот поддержки: [@ClubFoundryBot](https://t.me/ClubFoundryBot)
+- Telegram владельца проекта: [@EvgeniyIvanov718](https://t.me/EvgeniyIvanov718)
+- Email: [support@clubfoundry.net](mailto:support@clubfoundry.net)
+
+GitHub Issues - публичный раздел. Не публикуйте там пароли, ключи доступа,
+файлы настроек, базы данных и диагностические архивы. Для безопасной передачи
+диагностических данных используйте [@ClubFoundryBot](https://t.me/ClubFoundryBot).

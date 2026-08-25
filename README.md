@@ -87,7 +87,10 @@ Current terms are available at <https://clubfoundry.net/eula> and
 
 ## Support and security
 
-For support, use <https://t.me/ClubFoundryBot> or
-`support@clubfoundry.net`. Do not publish API keys, account-link tokens,
-Windows Agent boot tokens, `.env` files, databases, or diagnostic archives in
-GitHub issues.
+- Support Telegram bot: [@ClubFoundryBot](https://t.me/ClubFoundryBot)
+- Project owner on Telegram: [@EvgeniyIvanov718](https://t.me/EvgeniyIvanov718)
+- Email: [support@clubfoundry.net](mailto:support@clubfoundry.net)
+
+GitHub Issues are public. Do not post passwords, access keys, configuration
+files, databases, or diagnostic archives there. To transfer diagnostic data
+securely, use [@ClubFoundryBot](https://t.me/ClubFoundryBot).
