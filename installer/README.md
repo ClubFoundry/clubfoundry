@@ -6,6 +6,12 @@
 > `installer/install.sh`, not the user installation guide for the ClubFoundry
 > application. To install ClubFoundry on TrueNAS SCALE or another Linux Docker
 > host, follow the [application installation guide](../INSTALLATION.md).
+>
+> The ready-made `clubfoundry-VERSION-offline.tar.gz` bundle published in GitHub
+> Releases already contains this installer. When installing from that bundle,
+> do not download or install the installer separately: extract the bundle and
+> run its included `install.sh` as described in the
+> [application installation guide](../INSTALLATION.md).
 
 This directory contains the public source of the ClubFoundry installer. It
 preflights the host, acquires integrity-checked application images, selects
