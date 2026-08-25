@@ -44,6 +44,13 @@ TLS reverse proxy. A boot token is an enrollment secret: do not post it in an
 issue, commit it to Git, reuse it on another PC, or include it in a screenshot.
 If it expires, generate a new command in ClubFoundry.
 
+### Windows publisher warning for Agent 0.1.46
+
+The 0.1.46 MSI is not Authenticode-signed, so Windows can display
+`Unknown publisher`. Before continuing, verify the downloaded file against the
+`ClubFoundryAgent-0.1.46.msi` line in the release's `SHA256SUMS`. Do not bypass
+a hash mismatch.
+
 ## Existing Agent and updates
 
 If the Agent is already installed and linked to the correct ClubFoundry
