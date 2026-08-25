@@ -1,0 +1,4 @@
+*.sh text eol=lf
+sidecar/LICENSES/*.txt text eol=lf
+sidecar/LICENSES/*.lock text eol=lf
+sidecar/*.lock text eol=lf
