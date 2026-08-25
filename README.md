@@ -31,13 +31,24 @@ computer do not affect the master disk or any other computer.
 
 ## Install
 
-The GitHub release contains a ready-to-install offline bundle with the compiled
-ClubFoundry application and updater images. It can be installed on TrueNAS
-SCALE or on another Linux Docker host. An online installer is also available
-from this repository.
+The simplest option is to connect to TrueNAS over SSH and run the online
+installer with one command:
 
-See [Installation](INSTALLATION.md) for requirements, commands, usage-mode
-selection, updates, and removal warnings.
+```bash
+ssh ADMIN@TRUENAS_IP
+curl -fsSL https://raw.githubusercontent.com/ClubFoundry/clubfoundry/main/installer/install.sh | sudo bash
+```
+
+For step-by-step TrueNAS preparation and an explanation of each action, use the
+[simple website installation guide](https://clubfoundry.net/install).
+
+The GitHub release also contains a ready-to-install offline bundle with the
+compiled ClubFoundry application and updater images for TrueNAS SCALE and other
+Linux Docker hosts. This is the manual option for technical operators who want
+to download and verify the release files themselves.
+
+See the [detailed repository installation guide](INSTALLATION.md) for
+requirements, commands, usage-mode selection, updates, and removal warnings.
 
 ## Optional Windows Agent
 
